@@ -1,0 +1,49 @@
+node {
+    
+    stage('checkout'){
+     checkout scm
+   }             
+    def String cloudconfig_version
+    def pom = readMavenPom file: 'pom.xml'
+    cloudconfig_version = pom.version      
+  docker.image('maven:3.8.4-openjdk-17').inside("-u root -v $HOME/.m2:/root/.m2 --entrypoint=''") {
+            try {
+                 withMaven(maven: 'maven'){                
+                    stage('check java') {
+                        sh "java -version"
+                        sh "mvn -version"
+                    }             
+                    stage('clean') {
+                        sh "chmod +x mvnw"
+                        sh "./mvnw clean install -DskipTests"
+                    }
+                    stage('packaging') {
+                    sh "./mvnw clean package -Pprod -DskipTests"
+                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true                
+                    }
+      script{
+             stage('docker build'){
+                sh "cp ./src/main/docker/Dockerfile ./target/ "
+                cloudconfig_version = pom.version
+                docker.withRegistry('https://nexus-numeryx.my.p4d.click', 'docker-login') {
+                  def dockerImageTag =  "nexus-numeryx.my.p4d.click/business-suite/mac/gestion-utilisateur:"+cloudconfig_version
+                  def dockerImage = docker.build(dockerImageTag, './target/')
+                  dockerImage.push()
+                    }
+                }     
+            stage('integration') {
+               sshagent (credentials: ['ssh-cluster-app-bs-dev']) {
+                       sh "ssh root@10.30.2.49 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no sh /root/deploy.sh"
+                  }}    
+         }
+        
+                 }   
+
+            
+         finally {
+                sh "chmod -R 777 ."
+            }
+  }
+
+  
+}}
