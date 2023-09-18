@@ -1,0 +1,7 @@
+spring:
+  cloud:
+    config:
+      uri: http://root:root@localhost:8888
+      enabled: true
+  profiles:
+    active: dev

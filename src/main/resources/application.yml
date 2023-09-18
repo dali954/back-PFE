@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: gestionprojetservice
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          "*"
