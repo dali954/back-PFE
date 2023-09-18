@@ -43,4 +43,4 @@ node {
          finally {
                 sh "chmod -R 777 ."
             }
-}}
+}
